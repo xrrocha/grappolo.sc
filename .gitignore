@@ -1,0 +1,17 @@
+*.*.swp
+*.jar
+*.log
+.DS_Store
+.ammonite/
+.bloop/
+.bsp/
+.idea/
+.local/
+.metals/
+.scala-build/
+.scalafmt.conf
+.~*
+metals.sbt
+notes/
+results/
+target/
