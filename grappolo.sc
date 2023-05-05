@@ -4,7 +4,6 @@ import java.text.DecimalFormat
 import java.time.format.DateTimeFormatter
 import java.time.Instant
 import scala.annotation.tailrec
-import scala.collection.mutable.{Map as MMap}
 import scala.io.Source
 import scala.math.{max, min}
 import scala.util.Using
@@ -22,17 +21,19 @@ val resultDirectory =
   )
   directory.mkdirs()
   directory
-def dataFile(basename: String) = File(s"data/$basename.txt")
-def resultFile(basename: String) = File(resultDirectory, s"$basename.txt")
+def dataFile(basename: String, extension: String = "txt") =
+  File(s"data/$basename.$extension")
+def resultFile(basename: String, extension: String = "txt") =
+  File(resultDirectory, s"$basename.$extension")
 def saveResult[A](basename: String)(action: PrintWriter => A) =
   saveTo(resultFile(basename))(action)
 
-val logWriter = file2Writer(resultFile("log"))
+val logWriter = file2Writer(resultFile("experiment", "log"))
 def log(msg: Any*) =
   val now = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
   val line = s"[$now] ${msg.mkString(" ")}"
   println(line)
-  logWriter.println(s"[$now] ${msg.mkString(" ")}")
+  logWriter.println(line)
 
 log("Experiment:", experimentName)
 log("Data set:", datasetName)
@@ -55,7 +56,7 @@ val (values: Seq[String], scores: Seq[(String, String, Double)]) = make(
     .filter((_, _, d) => d < maxDistance)
     .sortBy(_._3)
 }
-log(fmtNum(values.size), "values", fmtNum(scores.size), "scores")
+log(values.size.asCount, "values", scores.size.asCount, "scores")
 
 val matrix: Map[String, Map[String, Double]] =
   scores
@@ -66,6 +67,8 @@ val matrix: Map[String, Map[String, Double]] =
         .toMap
         .withDefault(computeDistance(s1, _))
     }
+    .withDefault(s1 => Map().withDefault(s2 => computeDistance(s1, s2)))
+
 extension (matrix: Map[String, Map[String, Double]])
   def apply(s1: String, s2: String): Double =
     if s1 == s2 then 0.0
@@ -113,7 +116,7 @@ extension (matrix: Map[String, Map[String, Double]])
 
 saveResult("distances") { out =>
   val distances = scores.map(_._3).distinct.sorted
-  log(fmtNum(distances.size), "distinct distances found")
+  log(distances.size.asCount, "distinct distances found")
   distances.foreach(out.println)
 }
 
@@ -124,13 +127,13 @@ saveResult("clusters") { out =>
     val avgMedoidDistance = medoidDistances.avg
     log(
       "Dumping",
-      fmtNum(clusters.size),
+      clusters.size.asCount,
       "clusters for distance",
-      f"$distance%.08f.",
+      distance.asDistance,
       "Quality:",
-      f"$avgMedoidDistance%.08f.",
+      avgMedoidDistance.asDistance,
       "Measure:",
-      f"${clusters.size * avgMedoidDistance}%.08f"
+      (clusters.size * avgMedoidDistance).asDistance
     )
     clusters
       .zip(medoidDistances)
@@ -240,7 +243,10 @@ def saveTo[A](file: File)(action: PrintWriter => A): A =
 def file2Writer(file: File): PrintWriter = PrintWriter(FileWriter(file), true)
 
 lazy val countFormat = DecimalFormat("###,###,###")
-def fmtNum(num: Number) = countFormat.format(num)
+lazy val distanceFormat = DecimalFormat("###,###,###.########")
+extension (num: Number)
+  def asCount = countFormat.format(num)
+  def asDistance = distanceFormat.format(num)
 
 def time[A](action: => A): (A, Long) =
   val startTime = System.currentTimeMillis()
