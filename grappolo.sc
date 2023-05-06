@@ -9,7 +9,6 @@ import Make.*
 import Matrix.*
 import Numeric.*
 import StringDistance.*
-import Util.*
 import Scores.cartesianPairs
 
 val experimentName = "02-distance-agglomeration"
