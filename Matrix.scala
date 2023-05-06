@@ -1,7 +1,7 @@
 import Numeric.*
 
 case class Score[A](a1: A, a2: A, distance: Double):
-  def delimited(delimiter: String = "\t"): String =
+  def asDelimitedWith(delimiter: String = "\t"): String =
     List(a1, a2, distance).mkString(delimiter)
 
 case class Scores[A](
@@ -23,6 +23,11 @@ case class Scores[A](
   override def iterator: Iterator[Score[A]] = scores.iterator
 end Scores
 object Scores:
+  def cartesianPairs[A](values: Seq[A]): Seq[(A, A)] =
+    values.indices
+      .flatMap(i => (i until values.size).map(j => (i, i)))
+      .map((i, j) => (values(i), values(j)))
+
   def apply[A](
       as: Iterable[A],
       maxDistance: Double,
@@ -33,9 +38,7 @@ object Scores:
     apply(
       as,
       maxDistance,
-      (0 until size)
-        .flatMap(i => (i + 1 until size).map(j => (i, j)))
-        .map((i, j) => (values(i), values(j))),
+      cartesianPairs(values),
       computeDistance
     )
 
