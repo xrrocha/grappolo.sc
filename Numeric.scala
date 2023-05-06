@@ -6,6 +6,15 @@ object Numeric:
   val CountFormat = DecimalFormat("###,###,###")
   val DistanceFormat = DecimalFormat("###,###,###.########")
 
+  def normalize[N: Numeric](ns: Iterable[N]): Iterable[Double] =
+    val min = ns.min.toDouble
+    val denom = ns.max.toDouble - min
+    ns.map(n => (n.toDouble - min) / denom)
+  end normalize
+
+  def normalizedMap[N: Numeric](ns: Iterable[N]): Map[N, Double] =
+    ns.zip(normalize(ns)).toMap
+
   extension [T: Numeric](num: T)
     def asCount = CountFormat.format(num)
     def asDistance = DistanceFormat.format(num)
