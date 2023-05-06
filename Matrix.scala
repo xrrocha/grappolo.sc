@@ -23,9 +23,9 @@ case class Scores[A](
   override def iterator: Iterator[Score[A]] = scores.iterator
 end Scores
 object Scores:
-  def cartesianPairs[A](values: Seq[A]): Seq[(A, A)] =
-    values.indices
-      .flatMap(i => (i until values.size).map(j => (i, i)))
+  def cartesianPairs[A](values: Seq[A]): LazyList[(A, A)] =
+    LazyList.from(values.indices)
+      .flatMap(i => (i until values.size).map(j => (i, j)))
       .map((i, j) => (values(i), values(j)))
 
   def apply[A](
