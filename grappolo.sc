@@ -1,21 +1,22 @@
-import java.time.Instant
-import java.time.format.DateTimeFormatter
-import scala.annotation.tailrec
-import scala.math.{max, min}
-import java.io.{File, FileWriter, PrintWriter}
-
 import FileUtils.*
 import Make.*
 import Matrix.*
 import Numeric.*
-import StringDistance.*
 import Scores.cartesianPairs
+import StringDistance.*
 
-val experimentName = "02-distance-agglomeration"
-val datasetName = "surnames"
-val distanceMetricName = "Damerau-Levenshtein"
-val computeDistance = computeDamerauDistance
+import java.io.{File, FileWriter, PrintWriter}
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import scala.annotation.tailrec
+import scala.math.{max, min}
+
+val experimentName = "01-agglomeration"
+val distanceMetricName = "damerau"
 val maxDistance = 0.5
+val datasetName = "surnames"
+
+val computeDistance = StringDistance(distanceMetricName)
 
 val resultDirectory =
   val directory = File(
