@@ -13,5 +13,9 @@ object FileUtils:
     PrintWriter(OutputStreamWriter(os), true)
 
   def file2Writer(file: File): PrintWriter =
-    file.getParentFile.mkdirs()
+    val parentFile =
+      val parent = file.getParentFile
+      if parent != null then parent
+      else File(".")
+    parentFile.mkdirs()
     PrintWriter(FileWriter(file), true)

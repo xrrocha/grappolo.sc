@@ -13,7 +13,7 @@ import scala.math.{max, min}
 
 val experimentName = "01-agglomeration"
 val distanceMetricName = "damerau"
-val maxDistance = 0.5
+val maxDistance = 0.4
 
 val computeDistance = StringDistance(distanceMetricName)
 List("surnames", "male-names", "female-names").foreach { datasetName =>
@@ -74,11 +74,12 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
   }
 
   val matrix = scores.asMatrix
-  saveResult("clusters") { out =>
 
-    def print(distance: Double, clusters: Seq[Set[String]]) =
-      val medoidDistances = clusters.map(matrix.computeAvgMedoidDistance)
-      val avgMedoidDistance = medoidDistances.avg
+  case class Step(distance: Double, clusters: Seq[Set[String]]):
+    val medoidDistances = clusters.map(matrix.computeAvgMedoidDistance)
+    val avgMedoidDistance = medoidDistances.avg
+
+    def print(out: PrintWriter) =
       log(
         "Dumping",
         clusters.size.asCount,
@@ -105,7 +106,9 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
         .foreach(out.println)
       out.println("#")
     end print
+  end Step
 
+  val (_, steps) = saveResult("clusters") { out =>
     val clustersByDistance: Seq[(Double, Seq[Set[String]])] =
       scores
         .groupBy(_.distance)
@@ -122,12 +125,19 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
         }
         .sortBy((distance, clusters) => (distance, -clusters.size))
 
-    val clusters =
-      val initialClusters = values.map(s => (s, Set(s))).toMap
-      clustersByDistance.foldLeft(initialClusters) { (runningClusters, elem) =>
-        val (distance, clusters) = elem
-        print(distance, runningClusters.values.toSeq.distinct)
+    val initialClusters = values.map(s => (s, Set(s))).toMap
 
+    clustersByDistance.foldLeft(
+      (
+        initialClusters,
+        List(Step(0.0, initialClusters.values.toSeq.distinct))
+      )
+    ) { (accum, elem) =>
+
+      val (distance, clusters) = elem
+      val (runningClusters, steps) = accum
+
+      val nextClusters =
         clusters.foldLeft(runningClusters) { (runningClusters, cluster) =>
 
           @tailrec
@@ -146,7 +156,9 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
               else
                 merge(
                   (clusters(i) ++ clusters(j)) +:
-                    clusters.indices.filter(c => c != i && c != j).map(clusters)
+                    clusters.indices
+                      .filter(c => c != i && c != j)
+                      .map(clusters)
                 )
           end merge
 
@@ -156,6 +168,59 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
               cluster.map(entry => (entry, cluster))
             )
         }
+      val step = Step(distance, nextClusters.values.toSeq.distinct)
+      step.print(out)
+
+      (nextClusters, steps :+ step)
+    }
+  }
+
+  val qualityData =
+    steps.map(step =>
+      List(
+        step.distance,
+        step.avgMedoidDistance,
+        step.clusters.size.toDouble
+      )
+    )
+  val normalizedQualityData =
+    (normalizeRecords(qualityData))
+      .zip(qualityData)
+      .map(p => p._1 ++ p._2)
+  saveResult("qualityData") { out =>
+    normalizedQualityData
+      .map(qd => qd.map(v => f"$v%.08f").mkString("\t"))
+      .foreach(out.println)
+  }
+
+  val bestStep =
+    steps
+      .zip(normalizedQualityData)
+      .maxBy { (_, qualityData) =>
+        val distance :: avgMedoidDistance :: _ = qualityData: @unchecked
+        avgMedoidDistance * (1.0 - distance)
       }
+      ._1
+  log(
+    "Best clustering found at",
+    bestStep.distance,
+    "with",
+    bestStep.clusters.size,
+    "clusters"
+  )
+  saveResult("bestClusters") { out =>
+    out.println(f"size\tcount\t${bestStep.distance}%.08f")
+    bestStep.clusters
+      .zip(bestStep.medoidDistances)
+      .sortBy((cluster, avgMedoidDistance) => (-cluster.size, avgMedoidDistance))
+      .map((cluster, avgMedoidDistance) =>
+          List(
+            cluster.size,
+            avgMedoidDistance,
+            cluster.toSeq.sorted.mkString(",")
+          )
+            .mkString("\t")
+      )
+      .foreach(out.println)
   }
 }
