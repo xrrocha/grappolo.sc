@@ -1,4 +1,5 @@
 import FileUtils.*
+
 import Make.*
 import Matrix.*
 import NumberUtils.*
@@ -13,7 +14,7 @@ import scala.math.{max, min}
 
 val experimentName = "01-agglomeration"
 val distanceMetricName = "damerau"
-val maxDistance = 0.4
+val maxDistance = 0.5
 
 val computeDistance = StringDistance(distanceMetricName)
 List("surnames", "male-names", "female-names").foreach { datasetName =>
@@ -197,8 +198,8 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     steps
       .zip(normalizedQualityData)
       .maxBy { (_, qualityData) =>
-        val distance :: avgMedoidDistance :: _ = qualityData: @unchecked
-        avgMedoidDistance * (1.0 - distance)
+        val distance :: avgMedoidDistance :: clusterCount :: _ = qualityData: @unchecked
+        avgMedoidDistance * distance * clusterCount
       }
       ._1
   log(
