@@ -2,7 +2,7 @@ import java.text.DecimalFormat
 import java.time.format.DateTimeFormatter
 import scala.math.Numeric.Implicits.infixNumericOps
 
-object Numeric:
+object NumberUtils:
   val CountFormat = DecimalFormat("###,###,###")
   val DistanceFormat = DecimalFormat("###,###,###.########")
 
@@ -14,6 +14,20 @@ object Numeric:
 
   def normalizedMap[N: Numeric](ns: Iterable[N]): Map[N, Double] =
     ns.zip(normalize(ns)).toMap
+
+  def normalizeRecords[N: Numeric](
+      records: Iterable[Iterable[N]]
+  ): Iterable[Iterable[Double]] =
+    val fieldCount = records.head.size
+    records
+      .foldLeft(List.fill(fieldCount)(List[N]())) { (accum, values) =>
+        accum.zip(values).map((list, value) => list :+ value)
+      }
+      .map(list => NumberUtils.normalize(list))
+      .foldLeft(List.fill(records.size)(List[Double]())) { (accum, values) =>
+        accum.zip(values).map((record, value) => record :+ value)
+      }
+  end normalizeRecords
 
   extension [T: Numeric](num: T)
     def asCount = CountFormat.format(num)

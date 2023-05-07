@@ -11,7 +11,7 @@ object FileUtils:
 
   def os2Writer(os: OutputStream): PrintWriter =
     PrintWriter(OutputStreamWriter(os), true)
-    
+
   def file2Writer(file: File): PrintWriter =
     file.getParentFile.mkdirs()
     PrintWriter(FileWriter(file), true)

@@ -1,4 +1,4 @@
-import Numeric.*
+import NumberUtils.*
 
 case class Score[A](a1: A, a2: A, distance: Double):
   def asDelimitedWith(delimiter: String = "\t"): String =
@@ -24,7 +24,8 @@ case class Scores[A](
 end Scores
 object Scores:
   def cartesianPairs[A](values: Seq[A]): LazyList[(A, A)] =
-    LazyList.from(values.indices)
+    LazyList
+      .from(values.indices)
       .flatMap(i => (i until values.size).map(j => (i, j)))
       .map((i, j) => (values(i), values(j)))
 

@@ -1,4 +1,3 @@
-
 import FileUtils.*
 import StringDistance.*
 import Utils.*
@@ -32,17 +31,21 @@ def buildScoreFile(inputFile: File, outputFile: File) =
   Using(Source.fromFile(inputFile)) { in =>
     in.getLines()
       .map(_.split("\\s+")(0))
-      .toIndexedSeq.distinct.sorted
+      .toIndexedSeq
+      .distinct
+      .sorted
   }
     .map { values =>
       // FIXME Hangs when placed outside block
       val stringDistance = StringDistance(distanceMetric)
 
       sortAndCompress(outputFile) { out =>
-        LazyList.from(values.indices)
+        LazyList
+          .from(values.indices)
           .flatMap(i => (i + 1 until values.size).map(j => (i, j)))
           .map((i, j) =>
-            (values(i), values(j), stringDistance(values(i), values(j))))
+            (values(i), values(j), stringDistance(values(i), values(j)))
+          )
           .filter(_._3 != 1.0)
           .map(_.toList.mkString("\t"))
           .foreach(out.println)
@@ -57,6 +60,7 @@ def sortAndCompress(outputFile: File)(writer: PrintWriter => Unit): Int =
     )
       .mkString(" | ")
   val processIO =
-    BasicIO.standard(true)
+    BasicIO
+      .standard(true)
       .withInput(os => Using(os2Writer(os))(writer))
   Process(s"sh -c \"$commandLine\"").run(processIO).exitValue()
