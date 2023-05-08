@@ -1,7 +1,7 @@
 import scala.io.Source
 import java.io.File
 
-import FileUtils.*
+import IOUtils.*
 
 object Make:
   def make[A, B, C](
@@ -18,7 +18,7 @@ object Make:
         Source.fromFile(fileB).getLines().map(parseB).toSeq
       else
         val bs = mapper(as)
-        saveTo(fileB)(out => bs.map(formatB).foreach(out.println))
+        fileB.writeLines(bs)(formatB)
         bs
     (as, reducer(bs))
   end make

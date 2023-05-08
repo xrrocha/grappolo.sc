@@ -1,4 +1,4 @@
-import FileUtils.*
+import IOUtils.*
 
 import Make.*
 import Matrix.*
@@ -32,9 +32,9 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
   def resultFile(basename: String, extension: String = "txt") =
     File(resultDirectory, s"$basename.$extension")
   def saveResult[A](basename: String)(action: PrintWriter => A) =
-    saveTo(resultFile(basename))(action)
+    resultFile(basename).write(action)
 
-  val logWriter = file2Writer(resultFile("experiment", "log"))
+  val logWriter = resultFile("experiment", "log").toPrintWriter()
   // FIXME Support interspersed punctuation
   def log(msg: Any*) =
     val now = DateTimeFormatter.ISO_INSTANT.format(Instant.now())

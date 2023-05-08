@@ -1,4 +1,4 @@
-import FileUtils.*
+import IOUtils.*
 import StringDistance.*
 import Utils.*
 import info.debatty.java.stringsimilarity.Damerau
@@ -62,5 +62,5 @@ def sortAndCompress(outputFile: File)(writer: PrintWriter => Unit): Int =
   val processIO =
     BasicIO
       .standard(true)
-      .withInput(os => Using(os2Writer(os))(writer))
+      .withInput(os => Using(os.toPrintWriter())(writer))
   Process(s"sh -c \"$commandLine\"").run(processIO).exitValue()

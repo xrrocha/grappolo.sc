@@ -1,7 +1,7 @@
 import java.io.*
 import scala.io.Source
 import scala.util.Using
-import FileUtils.*
+import IOUtils.*
 import NumberUtils.*
 
 // val args = Array[String]()
@@ -10,7 +10,7 @@ Using(Source.fromFile(args(0))) { in =>
     in.getLines()
       .map(_.split("\\s+").map(_.toDouble).toList)
       .toSeq
-  Using(file2Writer(File(args(1)))) { out =>
+  Using(File(args(1)).toPrintWriter()) { out =>
     normalizeRecords(records)
       .zip(records)
       .map((n, r) => n ++ r)
