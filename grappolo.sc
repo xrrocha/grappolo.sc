@@ -2,8 +2,8 @@ import IOUtils.*
 
 import Make.*
 import Matrix.*
-import NumberUtils.*
-import Scores.cartesianPairs
+import NumericUtils.*
+import Score.cartesianPairs
 import StringDistance.*
 
 import java.io.{File, FileWriter, PrintWriter}
@@ -198,7 +198,8 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     steps
       .zip(normalizedQualityData)
       .maxBy { (_, qualityData) =>
-        val distance :: avgMedoidDistance :: clusterCount :: _ = qualityData: @unchecked
+        val distance :: avgMedoidDistance :: clusterCount :: _ =
+          qualityData: @unchecked
         avgMedoidDistance * distance * clusterCount
       }
       ._1
@@ -213,14 +214,16 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     out.println(f"size\tcount\t${bestStep.distance}%.08f")
     bestStep.clusters
       .zip(bestStep.medoidDistances)
-      .sortBy((cluster, avgMedoidDistance) => (-cluster.size, avgMedoidDistance))
+      .sortBy((cluster, avgMedoidDistance) =>
+        (-cluster.size, avgMedoidDistance)
+      )
       .map((cluster, avgMedoidDistance) =>
-          List(
-            cluster.size,
-            avgMedoidDistance,
-            cluster.toSeq.sorted.mkString(",")
-          )
-            .mkString("\t")
+        List(
+          cluster.size,
+          avgMedoidDistance,
+          cluster.toSeq.sorted.mkString(",")
+        )
+          .mkString("\t")
       )
       .foreach(out.println)
   }

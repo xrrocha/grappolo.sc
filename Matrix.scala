@@ -1,8 +1,32 @@
-import NumberUtils.*
+import NumericUtils.*
 
 case class Score[A](a1: A, a2: A, distance: Double):
   def asDelimitedWith(delimiter: String = "\t"): String =
     List(a1, a2, distance).mkString(delimiter)
+
+object Score:
+  def cartesianPairs[A](values: Seq[A]): LazyList[(A, A)] =
+    LazyList
+      .from(values.indices)
+      .flatMap(i => (i until values.size).map(j => (i, j)))
+      .map((i, j) => (values(i), values(j)))
+
+  def buildMatrix[A](
+      scores: Iterable[Score[A]],
+      computeDistance: (A, A) => Double = (_: A, _: A) => 1.0):
+  Map[A, Map[A, Double]] =
+    scores
+      .groupBy(_.a1)
+      .map { (a1, ss) =>
+        a1 -> ss
+          .map(s => (s.a2, s.distance))
+          .toMap
+          .withDefault(a2 => computeDistance(a1, a2))
+      }
+      .withDefault(a1 =>
+        Map[A, Double]().withDefault(a2 => computeDistance(a1, a2))
+      )
+end Score
 
 case class Scores[A](
     scores: Iterable[Score[A]],
@@ -65,6 +89,9 @@ object Matrix:
       else
         val (i1, i2) = if a1 < a2 then (a1, a2) else (a2, a1)
         matrix(i1)(i2)
+
+    def distances: Seq[Double] =
+      matrix.values.flatMap(_.values).toSet.toSeq.sorted
 
     def computeMedoids(cluster: Set[String]): Set[String] =
       def computeIntraDistances(cluster: Set[String]): Seq[(String, Double)] =

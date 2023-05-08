@@ -2,7 +2,7 @@ import java.io.*
 import scala.io.Source
 import scala.util.Using
 import IOUtils.*
-import NumberUtils.*
+import NumericUtils.*
 
 // val args = Array[String]()
 Using(Source.fromFile(args(0))) { in =>
