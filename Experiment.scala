@@ -67,13 +67,13 @@ class Experiment(
     val scoreFile = File(dataDir, s"$dataset-scores.txt.gz")
 
     val entries =
-      Using(Source.fromFile(inputFile)) { in =>
+      Using(Source.fromFile(inputFile)): in =>
         in.getLines()
           .map(_.split("\\s+")(0))
           .toIndexedSeq
           .distinct
           .sorted
-      }.get
+      .get
 
     if !(scoreFile.isFile() &&
         inputFile.lastModified() < scoreFile.lastModified())
@@ -85,10 +85,9 @@ class Experiment(
         .toInputStream()
         .toGZIP()
         .toSource()
-        .mappingLines { line =>
+        .mappingLines: line =>
           val Array(s1, s2, d) = line.split("\t")
           (s1, s2, d.toDouble)
-        }
 
     (entries, scores)
   end loadScores

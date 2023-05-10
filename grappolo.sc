@@ -8,7 +8,7 @@ import scala.util.Using
 
 List("surnames", "male-names", "female-names")
   .map(Experiment("01-agglomeration", "damerau", 0.4, _))
-  .foreach { experiment =>
+  .foreach: experiment =>
     import experiment.*
 
     val matrix =
@@ -18,12 +18,11 @@ List("surnames", "male-names", "female-names")
       // TODO Evaluate best distance for just scores
       (scores ++ scores.map(t => (t._2, t._1, t._3)))
         .groupBy(_._1)
-        .map { (s1, ss) =>
+        .map: (s1, ss) =>
           s1 -> ss
             .map(s => (s._2, s._3))
             .toMap
             .withDefault(s2 => default(s1, s2))
-        }
         .withDefault(s1 =>
           Map[String, Double]().withDefault(s2 => default(s1, s2))
         )
@@ -61,19 +60,17 @@ List("surnames", "male-names", "female-names")
             .sortBy(_._1)
         )
     log(groupedScores.size.asCount, "grouped scores")
-    resultFile("grouped-scores").writeLines(groupedScores) { scoredCluster =>
+    resultFile("grouped-scores").writeLines(groupedScores): scoredCluster =>
       scoredCluster
         .map((s, d) => s"$s/$d")
         .mkString("\t")
-    }
-
-    val initialClusters: Map[String, Set[String]] =
-      entries.map(s => (s, Set(s))).toMap
 
     val clusters: Seq[Seq[String]] =
+      val initialClusters: Map[String, Set[String]] =
+        entries.map(s => (s, Set(s))).toMap
       groupedScores
         .map(_.map(_._1).toSet)
-        .foldLeft(initialClusters) { (runningClusters, cluster) =>
+        .foldLeft(initialClusters): (runningClusters, cluster) =>
 
           @tailrec
           def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
@@ -102,14 +99,13 @@ List("surnames", "male-names", "female-names")
             nextClusters.flatMap(cluster =>
               cluster.map(entry => (entry, cluster))
             )
-        }
         .values
         .map(_.toSeq.sorted)
         .toSeq
         .distinct
     log(clusters.size.asCount, "clusters found for", datasetName)
 
-    saveResult("clusters") { out =>
+    saveResult("clusters"): out =>
       out.println(f"size\tcount\t${bestDistance}%.08f")
       clusters
         .sortBy(-_.size)
@@ -121,5 +117,3 @@ List("surnames", "male-names", "female-names")
             .mkString("\t")
         )
         .foreach(out.println)
-    }
-  }

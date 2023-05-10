@@ -1,5 +1,5 @@
 //> using javaOpt "-Xmx4g"
-//> using scala "3.2.2"
+//> using scala "3.3.0-RC5"
 //> using options "-deprecation", "-release:11"
 //> using resourceDirs "src/main/resources", "src/test/resources"
 

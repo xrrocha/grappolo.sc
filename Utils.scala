@@ -124,13 +124,11 @@ object NumericUtils:
   ): List[List[Double]] =
     val fieldCount = records.head.size
     records
-      .foldLeft(List.fill(fieldCount)(List[N]())) { (accum, values) =>
+      .foldLeft(List.fill(fieldCount)(List[N]())): (accum, values) =>
         accum.zip(values).map((list, value) => list :+ value)
-      }
       .map(list => normalize(list))
-      .foldLeft(List.fill(records.size)(List[Double]())) { (accum, values) =>
+      .foldLeft(List.fill(records.size)(List[Double]())): (accum, values) =>
         accum.zip(values).map((record, value) => record :+ value)
-      }
   end normalizeRecords
 
   extension [T: Numeric](num: T)
