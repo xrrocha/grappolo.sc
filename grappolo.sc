@@ -1,13 +1,10 @@
 import IOUtils.*
-
 import NumericUtils.*
 import StringDistance.*
-
-import java.io.{File, FileWriter, PrintWriter}
+import java.io.{File, PrintWriter}
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
-import scala.math.{max, min}
 import scala.util.Using
 
 val experimentName = "01-agglomeration"
