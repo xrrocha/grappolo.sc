@@ -77,6 +77,13 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .withDefault(s1 =>
         Map[String, Double]().withDefault(s2 => default(s1, s2))
       )
+  def distance(s1: String, s2: String) =
+    if s1 == s2 then 0.0
+    else
+      val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
+      matrix(i1)(i2)
+  def clusterDistance(c1: Iterable[String], c2: Iterable[String]): Double =
+    c1.flatMap(s1 => c2.map(s2 => distance(s1, s2))).avg
 
   val bestDistance: Double =
     def distanceProfiles(distance: Double): Set[Set[String]] =
@@ -101,8 +108,8 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .groupBy(_._1)
       .toSeq
       .map((s1, ss) =>
-          ((s1, 0.0) +: ss.filter(_._3 <= bestDistance).map(s => (s._2, s._3)))
-            .sortBy(_._1)
+        ((s1, 0.0) +: ss.filter(_._3 <= bestDistance).map(s => (s._2, s._3)))
+          .sortBy(_._1)
       )
   log(groupedScores.size.asCount, "grouped scores")
   resultFile("grouped-scores").writeLines(groupedScores) { scoredCluster =>
@@ -119,12 +126,6 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .map(_.filter(_._2 <= bestDistance).map(_._1).toSet)
       .foldLeft(initialClusters) { (runningClusters, cluster) =>
 
-        def compare(c1: Iterable[String], c2: Iterable[String]): Double =
-          def distance(s1: String, s2: String) =
-            val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
-            matrix(i1)(i2)
-          c1.flatMap(s1 => c2.map(s2 => distance(s1, s2))).avg
-
         @tailrec
         def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
           if clusters.size < 2 then clusters
@@ -132,7 +133,9 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
             val pairs: Seq[(Int, Int, Double)] =
               clusters.indices
                 .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
-                .map((i, j) => (i, j, compare(clusters(i), clusters(j))))
+                .map((i, j) =>
+                  (i, j, clusterDistance(clusters(i), clusters(j)))
+                )
                 .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
             val (i, j, dist) = pairs.head
             if dist > bestDistance then clusters
