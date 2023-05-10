@@ -73,7 +73,7 @@ List("surnames", "male-names", "female-names")
 
     val clusters: Seq[Seq[String]] =
       groupedScores
-        .map(_.filter(_._2 <= bestDistance).map(_._1).toSet)
+        .map(_.map(_._1).toSet)
         .foldLeft(initialClusters) { (runningClusters, cluster) =>
 
           @tailrec
