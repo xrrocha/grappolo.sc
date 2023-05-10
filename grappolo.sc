@@ -1,9 +1,6 @@
 import IOUtils.*
 
-import Make.*
-import Matrix.*
 import NumericUtils.*
-import Score.cartesianPairs
 import StringDistance.*
 
 import java.io.{File, FileWriter, PrintWriter}
