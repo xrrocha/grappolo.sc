@@ -120,12 +120,10 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .foldLeft(initialClusters) { (runningClusters, cluster) =>
 
         def compare(c1: Iterable[String], c2: Iterable[String]): Double =
-          c1.flatMap(s1 =>
-            c2.map { s2 =>
-              val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
-              matrix(i1)(i2)
-            }
-          ).avg
+          def distance(s1: String, s2: String) =
+            val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
+            matrix(i1)(i2)
+          c1.flatMap(s1 => c2.map(s2 => distance(s1, s2))).avg
 
         @tailrec
         def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
