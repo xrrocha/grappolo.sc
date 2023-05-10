@@ -143,6 +143,23 @@ object NumericUtils:
       else ns.sum.toDouble / ns.size
 end NumericUtils
 
+object OSCommand:
+  def writeLines[A](items: Iterable[A], commandLine: String)(
+      formatter: A => String
+  ): Int =
+    import IOUtils.*
+    import scala.sys.process.{BasicIO, Process}
+    val processIO =
+      BasicIO
+        .standard(true)
+        .withInput(os =>
+          Using(os.toPrintWriter())(out =>
+            items.map(formatter).foreach(out.println)
+          )
+        )
+    Process(s"sh -c \"$commandLine\"").run(processIO).exitValue()
+end OSCommand
+
 object StringDistance:
   val computeDamerauDistance: (String, String) => Double =
     val damerau = Damerau()

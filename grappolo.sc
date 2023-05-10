@@ -3,6 +3,7 @@ import java.io.{File, PrintWriter}
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
+import scala.io.Source
 import scala.util.Using
 
 val experimentName = "01-agglomeration"
@@ -13,6 +14,10 @@ val computeDistance = StringDistance(distanceMetricName)
 
 List("surnames", "male-names", "female-names").foreach { datasetName =>
 
+  val dataDirectory = File("data")
+  def dataFile(basename: String, extension: String = "txt") =
+    File(dataDirectory, s"$basename.$extension")
+
   val resultDirectory =
     val directory = File(
       File("results"),
@@ -21,8 +26,6 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     )
     directory.mkdirs()
     directory
-  def dataFile(basename: String, extension: String = "txt") =
-    File(s"data/$basename.$extension")
   def resultFile(basename: String, extension: String = "txt") =
     File(resultDirectory, s"$basename.$extension")
   def saveResult[A](basename: String)(action: PrintWriter => A) =
@@ -41,23 +44,13 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
   log("Distance metric:", distanceMetricName)
   log("Max distance:", maxDistance)
 
-  val entries: Seq[String] =
-    dataFile(datasetName).readLines().map(_.split("\t")(0))
+  val (entries, scoreIterator) =
+    loadScores(dataDirectory, datasetName, distanceMetricName)
 
   val scores: Seq[(String, String, Double)] =
-    Using(
-      File(s"results/scores/$distanceMetricName/${datasetName}_scores.txt.gz")
-        .toInputStream()
-        .toGZIP()
-        .toSource()
-    )(
-      _.mappingLines { line =>
-        val Array(s1, s2, d) = line.split("\t")
-        (s1, s2, d.toDouble)
-      }
-        .takeWhile((_, _, distance) => distance < maxDistance)
-        .toSeq
-    ).get
+    scoreIterator
+      .takeWhile((_, _, distance) => distance < maxDistance)
+      .toSeq
 
   val distances = scores.map(_._3).distinct.sorted
   log(distances.size.asCount, "distances")
@@ -66,6 +59,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     def default(s1: String, s2: String) =
       if s1 == s2 then 0.0
       else computeDistance(s1, s2)
+    // TODO Evaluate best distance for just scores
     (scores ++ scores.map(t => (t._2, t._1, t._3)))
       .groupBy(_._1)
       .map { (s1, ss) =>
@@ -174,3 +168,66 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .foreach(out.println)
   }
 }
+
+def loadScores(
+    dataDir: File,
+    dataset: String,
+    distanceMetricName: String
+): (IndexedSeq[String], Iterator[(String, String, Double)]) =
+
+  val inputFile = File(dataDir, s"$dataset.txt")
+  val scoreFile = File(dataDir, s"$dataset-scores.txt.gz")
+
+  val entries =
+    Using(Source.fromFile(inputFile)) { in =>
+      in.getLines()
+        .map(_.split("\\s+")(0))
+        .toIndexedSeq
+        .distinct
+        .sorted
+    }.get
+
+  if !(scoreFile.isFile() &&
+      inputFile.lastModified() < scoreFile.lastModified())
+  then populateScores(entries, scoreFile, distanceMetricName)
+
+  // FIXME Source is left unclosed
+  val scores =
+    scoreFile
+      .toInputStream()
+      .toGZIP()
+      .toSource()
+      .mappingLines { line =>
+        val Array(s1, s2, d) = line.split("\t")
+        (s1, s2, d.toDouble)
+      }
+
+  (entries, scores)
+end loadScores
+
+def populateScores(
+    entries: Seq[String],
+    outputFile: File,
+    distanceMetricName: String
+): Int =
+  val stringDistance = StringDistance(distanceMetricName)
+  val scores =
+    LazyList
+      .from(entries.indices)
+      .flatMap(i => (i + 1 until entries.size).map(j => (i, j)))
+      .map((i, j) =>
+        (entries(i), entries(j), stringDistance(entries(i), entries(j)))
+      )
+      .filter(_._3 != 1.0)
+  val commandLine =
+    List(
+      "sort -t'\t' -k3,3n -k1,1 -k2,2",
+      s"gzip > '${outputFile.getAbsolutePath}'"
+    )
+      .mkString(" | ")
+  val exitCode = OSCommand.writeLines(scores, commandLine) {
+    _.toList.mkString("\t")
+  }
+  require(exitCode == 0)
+  exitCode
+end populateScores
