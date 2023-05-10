@@ -65,40 +65,34 @@ List("surnames", "male-names", "female-names")
         .map((s, d) => s"$s/$d")
         .mkString("\t")
 
+    @tailrec
+    def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
+      if clusters.size < 2 then clusters
+      else
+        val pairs: Seq[(Int, Int, Double)] =
+          clusters.indices
+            .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
+            .map((i, j) => (i, j, clusterDistance(clusters(i), clusters(j))))
+            .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
+        val (i, j, dist) = pairs.head
+        if dist > bestDistance then clusters
+        else
+          merge(
+            (clusters(i) ++ clusters(j)) +:
+              clusters.indices
+                .filter(c => c != i && c != j)
+                .map(clusters)
+          )
+    end merge
+
     val clusters: Seq[Seq[String]] =
       val initialClusters: Map[String, Set[String]] =
         entries.map(s => (s, Set(s))).toMap
       groupedScores
         .map(_.map(_._1).toSet)
         .foldLeft(initialClusters): (runningClusters, cluster) =>
-
-          @tailrec
-          def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
-            if clusters.size < 2 then clusters
-            else
-              val pairs: Seq[(Int, Int, Double)] =
-                clusters.indices
-                  .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
-                  .map((i, j) =>
-                    (i, j, clusterDistance(clusters(i), clusters(j)))
-                  )
-                  .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
-              val (i, j, dist) = pairs.head
-              if dist > bestDistance then clusters
-              else
-                merge(
-                  (clusters(i) ++ clusters(j)) +:
-                    clusters.indices
-                      .filter(c => c != i && c != j)
-                      .map(clusters)
-                )
-          end merge
-
-          val nextClusters = merge(cluster.map(runningClusters).toSeq)
-          runningClusters ++
-            nextClusters.flatMap(cluster =>
-              cluster.map(entry => (entry, cluster))
-            )
+          runningClusters ++ merge(cluster.map(runningClusters).toSeq)
+            .flatMap(cluster => cluster.map(entry => (entry, cluster)))
         .values
         .map(_.toSeq.sorted)
         .toSeq
