@@ -74,8 +74,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     def default(s1: String, s2: String) =
       if s1 == s2 then 0.0
       else computeDistance(s1, s2)
-    // (scores ++ scores.map(t => (t._2, t._1, t._3)))
-    scores
+    (scores ++ scores.map(t => (t._2, t._1, t._3)))
       .groupBy(_._1)
       .map { (s1, ss) =>
         s1 -> ss
@@ -87,12 +86,11 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
         Map[String, Double]().withDefault(s2 => default(s1, s2))
       )
 
-  def distanceProfiles(distance: Double): Set[Set[String]] =
-    matrix.values.toSeq
-      .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
-      .toSet
-
   val bestDistance: Double =
+    def distanceProfiles(distance: Double): Set[Set[String]] =
+      matrix.values.toSeq
+        .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
+        .toSet
     distances
       .zip {
         distances
@@ -115,7 +113,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
             .sortBy(_._1)
       )
   log(groupedScores.size.asCount, "grouped scores")
-  resultFile("scored-clusters").writeLines(groupedScores) { scoredCluster =>
+  resultFile("grouped-scores").writeLines(groupedScores) { scoredCluster =>
     scoredCluster
       .map((s, d) => s"$s/$d")
       .mkString("\t")
