@@ -68,7 +68,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     ).get
 
   val distances = scores.map(_._3).distinct.sorted
-  log(distances.size, "distances")
+  log(distances.size.asCount, "distances")
 
   val matrix =
     def default(s1: String, s2: String) =
@@ -106,13 +106,16 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       ._1
   log("Best distance", bestDistance)
 
-  val scoredClusters: Seq[Seq[(String, Double)]] =
+  val groupedScores: Seq[Seq[(String, Double)]] =
     scores
       .groupBy(_._1)
       .toSeq
-      .map((s1, ss) => ((s1, 0.0) +: ss.map(s => (s._2, s._3))).sortBy(_._1))
-  log(scoredClusters.size, "scored clusters: ")
-  resultFile("scored-clusters").writeLines(scoredClusters) { scoredCluster =>
+      .map((s1, ss) =>
+          ((s1, 0.0) +: ss.filter(_._3 <= bestDistance).map(s => (s._2, s._3)))
+            .sortBy(_._1)
+      )
+  log(groupedScores.size.asCount, "grouped scores")
+  resultFile("scored-clusters").writeLines(groupedScores) { scoredCluster =>
     scoredCluster
       .map((s, d) => s"$s/$d")
       .mkString("\t")
@@ -122,12 +125,17 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
     entries.map(s => (s, Set(s))).toMap
 
   val clusters: Seq[Seq[String]] =
-    scoredClusters
+    groupedScores
       .map(_.filter(_._2 <= bestDistance).map(_._1).toSet)
       .foldLeft(initialClusters) { (runningClusters, cluster) =>
 
         def compare(c1: Iterable[String], c2: Iterable[String]): Double =
-          c1.flatMap(s1 => c2.map(s2 => computeDistance(s1, s2))).avg
+          c1.flatMap(s1 =>
+            c2.map { s2 =>
+              val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
+              matrix(i1)(i2)
+            }
+          ).avg
 
         @tailrec
         def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
@@ -159,6 +167,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       .map(_.toSeq.sorted)
       .toSeq
       .distinct
+  log(clusters.size.asCount, "clusters found for", datasetName)
 
   saveResult("clusters") { out =>
     out.println(f"size\tcount\t${bestDistance}%.08f")
