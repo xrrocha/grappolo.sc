@@ -40,6 +40,7 @@ List("surnames", "male-names", "female-names")
         matrix.values.toSeq
           .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
           .toSet
+      end distanceProfiles
       distances
         .zip {
           distances
@@ -47,9 +48,7 @@ List("surnames", "male-names", "female-names")
             .map(_.size)
             .map(size => (size - 1) / (entries.size - 1).toDouble)
         }
-        .maxBy { (distance, normalizedSize) =>
-          normalizedSize * (1.0 - distance)
-        }
+        .maxBy((distance, normalizedSize) => normalizedSize * (1.0 - distance))
         ._1
     log("Best distance", bestDistance)
 
