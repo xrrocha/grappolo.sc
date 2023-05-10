@@ -11,12 +11,14 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
 import scala.math.{max, min}
+import scala.util.Using
 
 val experimentName = "01-agglomeration"
 val distanceMetricName = "damerau"
-val maxDistance = 0.5
+val maxDistance = 0.4
 
 val computeDistance = StringDistance(distanceMetricName)
+
 List("surnames", "male-names", "female-names").foreach { datasetName =>
 
   val resultDirectory =
@@ -47,180 +49,124 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
   log("Distance metric:", distanceMetricName)
   log("Max distance:", maxDistance)
 
-  // TODO Store scores only once per dataset
-  val (values: Seq[String], scores: Scores[String]) =
-    Make
-      .fromInputFile(dataFile(datasetName))
-      .inputRecordParsedWith(_.split("\t")(0))
-      .toResultFile(resultFile("scores"))
-      .resultRecordParsedWith { record =>
-        val Array(s1, s2, distance) = record.split("\t")
-        Score(s1, s2, distance.toDouble)
+  val entries: Seq[String] =
+    dataFile(datasetName).readLines().map(_.split("\t")(0))
+
+  val scores: Seq[(String, String, Double)] =
+    Using(
+      File(s"results/scores/$distanceMetricName/${datasetName}_scores.txt.gz")
+        .toInputStream()
+        .toGZIP()
+        .toSource()
+    )(
+      _.mappingLines { line =>
+        val Array(s1, s2, d) = line.split("\t")
+        (s1, s2, d.toDouble)
       }
-      .resultRecordFormattedWith(_.asDelimitedWith("\t"))
-      .inputValuesTransformedWith { values =>
-        cartesianPairs(values)
-          .map { (s1, s2) =>
-            Score(s1, s2, computeDistance(s1, s2))
-          }
-          .filter(_.distance < maxDistance)
-      }
-      .resultValuesReducedWith(Scores(_, computeDistance))
-  log(values.size.asCount, "values", scores.size.asCount, "scores")
-
-  saveResult("distances") { out =>
-    val distances = scores.map(_.distance).toSet.toSeq.sorted
-    distances.foreach(out.println)
-    log(distances.size.asCount, "distinct distances found")
-  }
-
-  val matrix = scores.asMatrix
-
-  case class Step(distance: Double, clusters: Seq[Set[String]]):
-    val medoidDistances = clusters.map(matrix.computeAvgMedoidDistance)
-    val avgMedoidDistance = medoidDistances.avg
-
-    def print(out: PrintWriter) =
-      log(
-        "Dumping",
-        clusters.size.asCount,
-        "clusters for distance",
-        distance.asDistance,
-        "Avg medoid distance:",
-        avgMedoidDistance.asDistance,
-        "Quality:",
-        (distance * avgMedoidDistance * (1.0 - clusters.size / values.size)).asDistance
-      )
-      clusters
-        .zip(medoidDistances)
-        .map { (cluster, quality) =>
-          (
-            quality,
-            cluster.size,
-            matrix.sort(cluster).map(_._1).mkString(",")
-          )
-        }
-        .sortBy((quality, size, cluster) => (-size, quality, cluster))
-        .map { (quality, size, cluster) =>
-          List(distance, quality, size, cluster).mkString("\t")
-        }
-        .foreach(out.println)
-      out.println("#")
-    end print
-  end Step
-
-  val (_, steps) = saveResult("clusters") { out =>
-    val clustersByDistance: Seq[(Double, Seq[Set[String]])] =
-      scores
-        .groupBy(_.distance)
+        .takeWhile((_, _, distance) => distance < maxDistance)
         .toSeq
-        .map { (distance, values) =>
-          val clusters =
-            values
-              .groupBy(_.a1)
-              .toSeq
-              .map { (a1, ss) =>
-                ss.map(_.a2).toSet + a1
-              }
-          distance -> clusters
-        }
-        .sortBy((distance, clusters) => (distance, -clusters.size))
+    ).get
 
-    val initialClusters = values.map(s => (s, Set(s))).toMap
+  val distances = scores.map(_._3).distinct.sorted
+  log(distances.size, "distances")
 
-    clustersByDistance.foldLeft(
-      (
-        initialClusters,
-        List(Step(0.0, initialClusters.values.toSeq.distinct))
+  val matrix =
+    def default(s1: String, s2: String) =
+      if s1 == s2 then 0.0
+      else computeDistance(s1, s2)
+    // (scores ++ scores.map(t => (t._2, t._1, t._3)))
+    scores
+      .groupBy(_._1)
+      .map { (s1, ss) =>
+        s1 -> ss
+          .map(s => (s._2, s._3))
+          .toMap
+          .withDefault(s2 => default(s1, s2))
+      }
+      .withDefault(s1 =>
+        Map[String, Double]().withDefault(s2 => default(s1, s2))
       )
-    ) { (accum, elem) =>
 
-      val (distance, clusters) = elem
-      val (runningClusters, steps) = accum
+  def distanceProfiles(distance: Double): Set[Set[String]] =
+    matrix.values.toSeq
+      .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
+      .toSet
 
-      val nextClusters =
-        clusters.foldLeft(runningClusters) { (runningClusters, cluster) =>
-
-          @tailrec
-          def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
-            if clusters.size < 2 then clusters
-            else
-              val pairs: Seq[(Int, Int, Double)] =
-                clusters.indices
-                  .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
-                  .map((i, j) =>
-                    (i, j, matrix.compare(clusters(i), clusters(j)))
-                  )
-                  .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
-              val (i, j, dist) = pairs.head
-              if dist > distance then clusters
-              else
-                merge(
-                  (clusters(i) ++ clusters(j)) +:
-                    clusters.indices
-                      .filter(c => c != i && c != j)
-                      .map(clusters)
-                )
-          end merge
-
-          val nextClusters = merge(cluster.map(runningClusters).toSeq)
-          runningClusters ++
-            nextClusters.flatMap(cluster =>
-              cluster.map(entry => (entry, cluster))
-            )
-        }
-      val step = Step(distance, nextClusters.values.toSeq.distinct)
-      step.print(out)
-
-      (nextClusters, steps :+ step)
-    }
-  }
-
-  val qualityData =
-    steps.map(step =>
-      List(
-        step.distance,
-        step.avgMedoidDistance,
-        step.clusters.size.toDouble
-      )
-    )
-  val normalizedQualityData =
-    (normalizeRecords(qualityData))
-      .zip(qualityData)
-      .map(p => p._1 ++ p._2)
-  saveResult("qualityData") { out =>
-    normalizedQualityData
-      .map(qd => qd.map(v => f"$v%.08f").mkString("\t"))
-      .foreach(out.println)
-  }
-
-  val bestStep =
-    steps
-      .zip(normalizedQualityData)
-      .maxBy { (_, qualityData) =>
-        val distance :: avgMedoidDistance :: clusterCount :: _ =
-          qualityData: @unchecked
-        avgMedoidDistance * distance * clusterCount
+  val bestDistance: Double =
+    distances
+      .zip {
+        distances
+          .map(distanceProfiles)
+          .map(_.size)
+          .map(size => (size - 1) / (entries.size - 1).toDouble)
+      }
+      .maxBy { (distance, normalizedSize) =>
+        normalizedSize * (1.0 - distance)
       }
       ._1
-  log(
-    "Best clustering found at",
-    bestStep.distance,
-    "with",
-    bestStep.clusters.size,
-    "clusters"
-  )
-  saveResult("bestClusters") { out =>
-    out.println(f"size\tcount\t${bestStep.distance}%.08f")
-    bestStep.clusters
-      .zip(bestStep.medoidDistances)
-      .sortBy((cluster, avgMedoidDistance) =>
-        (-cluster.size, avgMedoidDistance)
-      )
-      .map((cluster, avgMedoidDistance) =>
+  log("Best distance", bestDistance)
+
+  val scoredClusters: Seq[Seq[(String, Double)]] =
+    scores
+      .groupBy(_._1)
+      .toSeq
+      .map((s1, ss) => ((s1, 0.0) +: ss.map(s => (s._2, s._3))).sortBy(_._1))
+  log(scoredClusters.size, "scored clusters: ")
+  resultFile("scored-clusters").writeLines(scoredClusters) { scoredCluster =>
+    scoredCluster
+      .map((s, d) => s"$s/$d")
+      .mkString("\t")
+  }
+
+  val initialClusters: Map[String, Set[String]] =
+    entries.map(s => (s, Set(s))).toMap
+
+  val clusters: Seq[Seq[String]] =
+    scoredClusters
+      .map(_.filter(_._2 <= bestDistance).map(_._1).toSet)
+      .foldLeft(initialClusters) { (runningClusters, cluster) =>
+
+        def compare(c1: Iterable[String], c2: Iterable[String]): Double =
+          c1.flatMap(s1 => c2.map(s2 => computeDistance(s1, s2))).avg
+
+        @tailrec
+        def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
+          if clusters.size < 2 then clusters
+          else
+            val pairs: Seq[(Int, Int, Double)] =
+              clusters.indices
+                .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
+                .map((i, j) => (i, j, compare(clusters(i), clusters(j))))
+                .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
+            val (i, j, dist) = pairs.head
+            if dist > bestDistance then clusters
+            else
+              merge(
+                (clusters(i) ++ clusters(j)) +:
+                  clusters.indices
+                    .filter(c => c != i && c != j)
+                    .map(clusters)
+              )
+        end merge
+
+        val nextClusters = merge(cluster.map(runningClusters).toSeq)
+        runningClusters ++
+          nextClusters.flatMap(cluster =>
+            cluster.map(entry => (entry, cluster))
+          )
+      }
+      .values
+      .map(_.toSeq.sorted)
+      .toSeq
+      .distinct
+
+  saveResult("clusters") { out =>
+    out.println(f"size\tcount\t${bestDistance}%.08f")
+    clusters
+      .sortBy(-_.size)
+      .map(cluster =>
         List(
           cluster.size,
-          avgMedoidDistance,
           cluster.toSeq.sorted.mkString(",")
         )
           .mkString("\t")

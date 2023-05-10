@@ -7,7 +7,11 @@ object IOUtils:
 
   extension (source: Source)
     def mapLines[A](action: String => A): Seq[A] =
-     Using(source)(_.getLines().map(action)).get.toSeq
+      Using(source)(_.getLines().map(action)).get.toSeq
+    def mappingLines[A](action: String => A): Iterator[A] =
+      source.getLines().map(action)
+    def readLines(): IndexedSeq[String] =
+      Using(source)(_.getLines().toIndexedSeq).get
   end extension
 
   extension (is: InputStream)
@@ -29,9 +33,7 @@ object IOUtils:
       Using(printWriter)(action).get
 
     def writeLines[A](values: Iterable[A])(action: A => String): Unit =
-      Using(printWriter)(out =>
-        values.map(action).foreach(out.println)
-      ).get
+      Using(printWriter)(out => values.map(action).foreach(out.println)).get
   end extension
 
   extension (os: OutputStream)
@@ -65,6 +67,9 @@ object IOUtils:
     def toPrintWriter(): PrintWriter =
       PrintWriter(file.toWriter(), true)
     end toPrintWriter
+
+    def readLines(): Seq[String] =
+      file.toSource().readLines()
 
     def mapLines[A](action: String => A): Seq[A] =
       file.toSource().mapLines(action)

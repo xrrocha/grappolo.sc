@@ -16,18 +16,19 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
 
   val source =
     File(s"results/scores/$distanceMetric/${datasetName}_scores.txt.gz")
-      .toInputStream().toGZIP().toSource()
-      
+      .toInputStream()
+      .toGZIP()
+      .toSource()
+
   val scores = Using(source) {
-      _.getLines()
-        .map { line =>
-          val Array(s1, s2, d) = line.split("\t")
-          (s1, s2, d.toDouble)
-        }
-        .takeWhile(_._3 < maxDistance)
-        .toSeq
-  }
-    .get
+    _.getLines()
+      .map { line =>
+        val Array(s1, s2, d) = line.split("\t")
+        (s1, s2, d.toDouble)
+      }
+      .takeWhile(_._3 < maxDistance)
+      .toSeq
+  }.get
 
   val matrix =
     def default(s1: String, s2: String) =
@@ -46,7 +47,7 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
         Map[String, Double]().withDefault(s2 => default(s1, s2))
       )
 
-  val distances = matrix.distances
+  val distances = matrix.flatMap(_.values).toSet.toSeq.sorted
   val profileSizes =
     distances
       .map(matrix.profiles)
@@ -62,7 +63,9 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
       }
 
   val bestDistanceData = distanceData.maxBy(_._4)
-  println(s"$datasetName($datasetSize): ${distances.size}, ${bestDistanceData._1}")
+  println(
+    s"$datasetName($datasetSize): ${distances.size}, ${bestDistanceData._1}"
+  )
 
   File(s"results/scores/$distanceMetric/${datasetName}_profiles.txt")
     .writeLines(distanceData) { (distance, size, normalizedSize, metric) =>
@@ -70,10 +73,10 @@ List("surnames", "male-names", "female-names").foreach { datasetName =>
         f"$distance%.08f",
         f"$size%06d",
         f"$normalizedSize%.08f",
-        f"$metric%.08f",
+        f"$metric%.08f"
       )
         .mkString("\t")
-  }
+    }
 }
 
 extension [A](matrix: Map[A, Map[A, Double]])

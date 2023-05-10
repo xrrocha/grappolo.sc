@@ -13,8 +13,8 @@ object Score:
 
   def buildMatrix[A](
       scores: Iterable[Score[A]],
-      computeDistance: (A, A) => Double = (_: A, _: A) => 1.0):
-  Map[A, Map[A, Double]] =
+      computeDistance: (A, A) => Double = (_: A, _: A) => 1.0
+  ): Map[A, Map[A, Double]] =
     scores
       .groupBy(_.a1)
       .map { (a1, ss) =>
