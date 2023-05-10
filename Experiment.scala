@@ -6,16 +6,17 @@ import scala.io.Source
 import scala.util.Using
 
 class Experiment(
-    experimentName: String,
-    distanceMetricName: String,
-    maxDistance: Double,
-    datasetName: String
+    val experimentName: String,
+    val distanceMetricName: String,
+    val maxDistance: Double,
+    val datasetName: String
 ):
 
   log("Experiment:", experimentName)
   log("Data set:", datasetName)
   log("Distance metric:", distanceMetricName)
   log("Max distance:", maxDistance)
+  log("Dataset name:", datasetName)
 
   val computeDistance = StringDistance(distanceMetricName)
   val (entries, scoreIterator) =
@@ -28,6 +29,8 @@ class Experiment(
 
   val distances = scores.map(_._3).distinct.sorted
   log(distances.size.asCount, "distances")
+
+  def run[A](body: Experiment => A) = body(this)
 
   private lazy val dataDirectory = File("data")
   def dataFile(basename: String, extension: String = "txt") =
