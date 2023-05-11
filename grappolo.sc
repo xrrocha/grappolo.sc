@@ -15,15 +15,16 @@ List("surnames", "male-names", "female-names")
       dataset = datasetName
     )
   .foreach: experiment =>
-    import experiment.*
+
+    import experiment.{log, resultFile, saveResult}
 
     val matrix =
       def defaultDistance(entry1: String, entry2: String) =
         if entry1 == entry2 then 0.0
-        else computeDistance(entry1, entry2)
+        else experiment.computeDistance(entry1, entry2)
       // TODO Evaluate best distance for just scores
-      (scores ++
-        scores.map: (entry1, entry2, distance) =>
+      (experiment.scores ++
+        experiment.scores.map: (entry1, entry2, distance) =>
           (entry2, entry1, distance))
         .groupBy((entry1, entry2, distance) => entry1)
         .map: (entry1, neighbors) =>
@@ -64,18 +65,18 @@ List("surnames", "male-names", "female-names")
           .toSet
       end neighborhoodProfile
 
-      distances
+      experiment.distances
         .zip {
-          distances
+          experiment.distances
             .map(neighborhoodProfile)
             .map(_.size)
-            .map(size => (size - 1) / (entries.size - 1).toDouble)
+            .map(size => (size - 1) / (experiment.entries.size - 1).toDouble)
         }
         .maxBy((distance, normalizedSize) => normalizedSize * (1.0 - distance))
     log("Best distance", bestDistance, "quality metric", qualityMetric)
 
     val groupedScores: Seq[Seq[(String, Double)]] =
-      scores
+      experiment.scores
         .groupBy((entry, neighbor, distance) => entry)
         .toSeq
         .map: (entry, neighbors) =>
@@ -114,7 +115,7 @@ List("surnames", "male-names", "female-names")
     val clusters: Seq[Seq[String]] =
 
       val initialClusters: Map[String, Set[String]] =
-        entries
+        experiment.entries
           .map: entry =>
             (entry, Set(entry))
           .toMap
@@ -142,9 +143,9 @@ List("surnames", "male-names", "female-names")
     log(
       clusters.size.asCount,
       "clusters found for",
-      entries.size.asCount,
+      experiment.entries.size.asCount,
       "entries in",
-      dataset
+      experiment.dataset
     )
 
     saveResult("clusters"): out =>
