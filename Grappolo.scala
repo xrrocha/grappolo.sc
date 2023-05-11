@@ -4,7 +4,7 @@ object Grappolo:
       distanceMetric: (A, A) => Double,
       maxDistance: Double
   ): Iterable[A] => Seq[Set[A]] =
-    //
+    // Return suitable clusterer for entries
     entries =>
 
       val scores: Seq[(A, A, Double)] =
