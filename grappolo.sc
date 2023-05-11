@@ -86,45 +86,59 @@ List("surnames", "male-names", "female-names")
                 .map((_, neighbor, distance) => (neighbor, distance))
           entryDistancePairs.sortBy((neighbor, distance) => neighbor)
     log(groupedScores.size.asCount, "grouped scores")
-    resultFile("grouped-scores").writeLines(groupedScores): scoredCluster =>
-      scoredCluster
-        .map((entry, distance) => s"$entry/$distance")
-        .mkString("\t")
+    resultFile("grouped-scores").writeLines(groupedScores):
+      entryDistancePairs =>
+        entryDistancePairs
+          .map((entry, distance) => s"$entry/$distance")
+          .mkString("\t")
 
     @tailrec
     def merge(clusters: Seq[Set[String]]): Seq[Set[String]] =
       if clusters.size < 2 then clusters
       else
-        val pairs: Seq[(Int, Int, Double)] =
+        val scoreIndices: Seq[(Int, Int, Double)] =
           clusters.indices
             .flatMap(i => ((i + 1) until clusters.size).map(j => (i, j)))
             .map((i, j) => (i, j, clusterDistance(clusters(i), clusters(j))))
             .sortBy((i, j, d) => (d, clusters(i).size + clusters(j).size))
-        val (i, j, dist) = pairs.head
+        val (i, j, dist) = scoreIndices.head
         if dist > bestDistance then clusters
         else
-          merge(
+          merge:
             (clusters(i) ++ clusters(j)) +:
               clusters.indices
                 .filter(c => c != i && c != j)
                 .map(clusters)
-          )
     end merge
 
     val clusters: Seq[Seq[String]] =
+
       val initialClusters: Map[String, Set[String]] =
-        entries.map(s => (s, Set(s))).toMap
-      val clusterMap =
-        groupedScores
-          .map(_.map(_._1).toSet)
-          .foldLeft(initialClusters): (runningClusters, cluster) =>
+        entries
+          .map: entry =>
+            (entry, Set(entry))
+          .toMap
+
+      val clusterMap: Map[String, Set[String]] =
+        val groupedScoreClusters: Seq[Set[String]] =
+          groupedScores.map: entryDistancePairs =>
+            entryDistancePairs
+              .map((entry, distance) => entry)
+              .toSet
+
+        groupedScoreClusters.foldLeft(initialClusters):
+          (runningClusters, cluster) =>
             runningClusters ++
               merge(cluster.map(runningClusters).toSeq)
                 .flatMap(cluster => cluster.map(entry => (entry, cluster)))
+      end clusterMap
+
       clusterMap.values
-        .map(_.toSeq.sorted)
+        .map: clusters =>
+          clusters.toSeq.sorted
         .toSeq
         .distinct
+    end clusters
     log(
       clusters.size.asCount,
       "clusters found for",
@@ -136,12 +150,11 @@ List("surnames", "male-names", "female-names")
     saveResult("clusters"): out =>
       out.println(f"size\tcount\t${bestDistance}%.08f")
       clusters
-        .sortBy(-_.size)
-        .map(cluster =>
+        .sortBy(cluster => -cluster.size)
+        .map: cluster =>
           List(
             cluster.size,
             cluster.toSeq.sorted.mkString(",")
           )
             .mkString("\t")
-        )
         .foreach(out.println)
