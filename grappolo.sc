@@ -32,10 +32,9 @@ List("surnames", "male-names", "female-names")
             .map((_, entry2, distance) => (entry2, distance))
             .toMap
             .withDefault(entry2 => defaultDistance(entry1, entry2))
-        .withDefault(entry1 =>
+        .withDefault: entry1 =>
           Map[String, Double]()
             .withDefault(entry2 => defaultDistance(entry1, entry2))
-        )
 
     def entryDistance(entry1: String, entry2: String) =
       if entry1 == entry2 then 0.0
@@ -61,8 +60,8 @@ List("surnames", "male-names", "female-names")
             neighbors.toSeq
               .filter((neighbor, distance) => distance <= distanceThreshold)
               .map((neighbor, distance) => neighbor)
-              .toSet
-          .toSet
+              .toSet // TODO sorted in neighborhoodProfile?
+          .toSet // TODO distinct in neighborhoodProfile?
       end neighborhoodProfile
 
       experiment.distances
