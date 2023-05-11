@@ -54,7 +54,7 @@ List("surnames", "male-names", "female-names")
         .avg
 
     val (bestDistance: Double, qualityMetric: Double) =
-      def neighborhoodProfile(distanceThreshold: Double): Set[Set[String]] =
+      def neighborhoodProfiles(distanceThreshold: Double): Set[Set[String]] =
         matrix.values.toSeq
           .map: neighbors =>
             neighbors.toSeq
@@ -62,14 +62,16 @@ List("surnames", "male-names", "female-names")
               .map((neighbor, distance) => neighbor)
               .toSet // TODO sorted in neighborhoodProfile?
           .toSet // TODO distinct in neighborhoodProfile?
-      end neighborhoodProfile
+      end neighborhoodProfiles
 
       experiment.distances
         .zip {
           experiment.distances
-            .map(neighborhoodProfile)
-            .map(_.size)
-            .map(size => (size - 1) / (experiment.entries.size - 1).toDouble)
+            .map(neighborhoodProfiles)
+            .map: profile =>
+              val size = profile.size
+              // Normalize profile size w/respect to entry count
+              (size - 1) / (experiment.entries.size - 1).toDouble
         }
         .maxBy((distance, normalizedSize) => normalizedSize * (1.0 - distance))
     log("Best distance", bestDistance, "quality metric", qualityMetric)
