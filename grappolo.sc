@@ -12,39 +12,50 @@ List("surnames", "male-names", "female-names")
       name = "01-agglomeration",
       metric = "damerau",
       maxDistance = 0.4,
-      dataset = datasetName)
+      dataset = datasetName
+    )
   .foreach: experiment =>
     import experiment.*
 
     val matrix =
-      def default(s1: String, s2: String) =
-        if s1 == s2 then 0.0
-        else computeDistance(s1, s2)
+      def defaultDistance(entry1: String, entry2: String) =
+        if entry1 == entry2 then 0.0
+        else computeDistance(entry1, entry2)
       // TODO Evaluate best distance for just scores
-      (scores ++ scores.map(t => (t._2, t._1, t._3)))
-        .groupBy(_._1)
-        .map: (s1, ss) =>
-          s1 -> ss
-            .map(s => (s._2, s._3))
+      (scores ++ scores.map((entry1, entry2, distance) => (entry2, entry1, distance)))
+        .groupBy((entry1, entry2, distance) => entry1)
+        .map: (entry1, neighbors) =>
+          entry1 -> neighbors
+            .map((_, entry2, distance) => (entry2, distance))
             .toMap
-            .withDefault(s2 => default(s1, s2))
-        .withDefault(s1 =>
-          Map[String, Double]().withDefault(s2 => default(s1, s2))
+            .withDefault(entry2 => defaultDistance(entry1, entry2))
+        .withDefault(entry1 =>
+          Map[String, Double]().withDefault(entry2 => defaultDistance(entry1, entry2))
         )
 
-    def distance(s1: String, s2: String) =
-      if s1 == s2 then 0.0
+    def distance(entry1: String, entry2: String) =
+      if entry1 == entry2 then 0.0
       else
-        val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
-        matrix(i1)(i2)
+        val (first, second) =
+          if entry1 < entry2 then (entry1, entry2)
+          else (entry2, entry1)
+        matrix(first)(second)
 
-    def clusterDistance(c1: Iterable[String], c2: Iterable[String]): Double =
-      c1.flatMap(s1 => c2.map(s2 => distance(s1, s2))).avg
+    def clusterDistance(
+        cluster1: Iterable[String],
+        cluster2: Iterable[String]
+    ): Double =
+      cluster1
+        .flatMap(entry1 => cluster2.map(entry2 => distance(entry1, entry2)))
+        .avg
 
     val bestDistance: Double =
-      def distanceProfiles(distance: Double): Set[Set[String]] =
+      def distanceProfiles(distanceThreshold: Double): Set[Set[String]] =
         matrix.values.toSeq
-          .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
+          .map: neighbors =>
+            neighbors.toSeq
+              .filter(_._2 <= distanceThreshold)
+              .map(_._1).toSet
           .toSet
       end distanceProfiles
 
@@ -63,8 +74,10 @@ List("surnames", "male-names", "female-names")
       scores
         .groupBy(_._1)
         .toSeq
-        .map((s1, ss) =>
-          ((s1, 0.0) +: ss.filter(_._3 <= bestDistance).map(s => (s._2, s._3)))
+        .map((entry1, ss) =>
+          ((entry1, 0.0) +: ss
+            .filter(_._3 <= bestDistance)
+            .map(s => (s._2, s._3)))
             .sortBy(_._1)
         )
     log(groupedScores.size.asCount, "grouped scores")
@@ -109,8 +122,10 @@ List("surnames", "male-names", "female-names")
         .distinct
     log(
       clusters.size.asCount,
-      "clusters found for", entries.size.asCount,
-      "entries in", dataset
+      "clusters found for",
+      entries.size.asCount,
+      "entries in",
+      dataset
     )
 
     saveResult("clusters"): out =>
