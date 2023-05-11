@@ -26,11 +26,13 @@ List("surnames", "male-names", "female-names")
         .withDefault(s1 =>
           Map[String, Double]().withDefault(s2 => default(s1, s2))
         )
+
     def distance(s1: String, s2: String) =
       if s1 == s2 then 0.0
       else
         val (i1, i2) = if s1 < s2 then (s1, s2) else (s2, s1)
         matrix(i1)(i2)
+
     def clusterDistance(c1: Iterable[String], c2: Iterable[String]): Double =
       c1.flatMap(s1 => c2.map(s2 => distance(s1, s2))).avg
 
@@ -40,6 +42,7 @@ List("surnames", "male-names", "female-names")
           .map(pairs => pairs.toSeq.filter(_._2 <= distance).map(_._1).toSet)
           .toSet
       end distanceProfiles
+
       distances
         .zip {
           distances
@@ -88,11 +91,14 @@ List("surnames", "male-names", "female-names")
     val clusters: Seq[Seq[String]] =
       val initialClusters: Map[String, Set[String]] =
         entries.map(s => (s, Set(s))).toMap
-      groupedScores
-        .map(_.map(_._1).toSet)
-        .foldLeft(initialClusters): (runningClusters, cluster) =>
-          runningClusters ++ merge(cluster.map(runningClusters).toSeq)
-            .flatMap(cluster => cluster.map(entry => (entry, cluster)))
+      val clusterMap =
+        groupedScores
+          .map(_.map(_._1).toSet)
+          .foldLeft(initialClusters): (runningClusters, cluster) =>
+            runningClusters ++
+              merge(cluster.map(runningClusters).toSeq)
+                .flatMap(cluster => cluster.map(entry => (entry, cluster)))
+      clusterMap
         .values
         .map(_.toSeq.sorted)
         .toSeq
