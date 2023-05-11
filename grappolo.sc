@@ -98,8 +98,7 @@ List("surnames", "male-names", "female-names")
             runningClusters ++
               merge(cluster.map(runningClusters).toSeq)
                 .flatMap(cluster => cluster.map(entry => (entry, cluster)))
-      clusterMap
-        .values
+      clusterMap.values
         .map(_.toSeq.sorted)
         .toSeq
         .distinct

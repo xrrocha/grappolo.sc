@@ -10,6 +10,7 @@
 .metals/
 .scala-build/
 .scalafmt.conf
+.vscode/
 .~*
 metals.sbt
 notes/
