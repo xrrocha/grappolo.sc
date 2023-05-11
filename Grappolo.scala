@@ -36,7 +36,7 @@ object Grappolo:
       scores.map: (entry, neighbor, distance) =>
         (neighbor, entry, distance)
 
-    val map =
+    val matrix =
       (scores ++ symmetricScores)
         .groupBy((entry, _, _) => entry)
         .map: (entry, scores) =>
@@ -56,7 +56,7 @@ object Grappolo:
 
     val maxProfileDistance: Double =
       def buildNeighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
-        map.values.toSeq
+        matrix.values.toSeq
           .map: neighbors =>
             neighbors.toSeq
               .filter((_, distance) => distance <= distanceThreshold)
@@ -83,7 +83,7 @@ object Grappolo:
     def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
       val scores =
         cluster1.flatMap: entry1 =>
-          cluster2.map(entry2 => map(entry1)(entry2))
+          cluster2.map(entry2 => matrix(entry1)(entry2))
       scores.sum / scores.size
     end clusterDistance
 
