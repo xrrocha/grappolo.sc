@@ -14,6 +14,7 @@ object Utils:
 
   export IOUtils.*
   export NumericUtils.*
+  export OSCommand.*
   export StringDistance.*
 
   implicit class KLike[T](t: T):
