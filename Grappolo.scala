@@ -8,7 +8,7 @@ object Grappolo:
       maxDistance: Double
   ): Iterable[A] => Seq[Set[A]] =
 
-    require(maxDistance > 0.0 && maxDistance <= 1.0)
+    require(maxDistance > 0.0 && maxDistance < 1.0)
 
     entries =>
       val scores: Seq[(A, A, Double)] =
@@ -55,20 +55,20 @@ object Grappolo:
         .sorted
 
     val maxProfileDistance: Double =
-      def neighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
+      def buildNeighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
         map.values.toSeq
           .map: neighbors =>
             neighbors.toSeq
-              .filter((neighbor, distance) => distance <= distanceThreshold)
-              .map((neighbor, distance) => neighbor)
+              .filter((_, distance) => distance <= distanceThreshold)
+              .map((neighbor, _) => neighbor)
               .toSet
           .toSet
-      end neighborhoodProfiles
+      end buildNeighborhoodProfiles
       // Choose distance yielding highest metric for neighborhood profile count
       distances
         .zip {
           distances
-            .map(neighborhoodProfiles)
+            .map(buildNeighborhoodProfiles)
             .map: neighborhoodProfile =>
               val profileCount = neighborhoodProfile.size
               // Normalize profile count w/respect to given size
@@ -96,7 +96,6 @@ object Grappolo:
             cartesianProduct(clusters.indices)
               .map: (i, j) =>
                 (i, j, clusterDistance(clusters(i), clusters(j)))
-              .toSeq
               .minBy: (i, j, distance) =>
                 (distance, clusters(i).size + clusters(j).size)
           if distance > maxProfileDistance then clusters
