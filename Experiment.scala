@@ -6,21 +6,21 @@ import scala.io.Source
 import scala.util.Using
 
 class Experiment(
-    val experimentName: String,
-    val distanceMetricName: String,
+    val name: String,
+    val metric: String,
     val maxDistance: Double,
-    val datasetName: String
+    val dataset: String
 ):
 
-  log("Experiment:", experimentName)
-  log("Data set:", datasetName)
-  log("Distance metric:", distanceMetricName)
+  log("Experiment:", name)
+  log("Data set:", dataset)
+  log("Distance metric:", metric)
   log("Max distance:", maxDistance)
-  log("Dataset name:", datasetName)
+  log("Dataset name:", dataset)
 
-  val computeDistance = StringDistance(distanceMetricName)
+  val computeDistance = StringDistance(metric)
   val (entries, scoreIterator) =
-    loadScores(dataDirectory, datasetName, distanceMetricName)
+    loadScores(dataDirectory, dataset, metric)
 
   val scores: Seq[(String, String, Double)] =
     scoreIterator
@@ -39,7 +39,7 @@ class Experiment(
   private lazy val resultDirectory =
     val directory = File(
       File("results"),
-      List(experimentName, distanceMetricName, datasetName, maxDistance)
+      List(name, metric, dataset, maxDistance)
         .mkString(File.separator)
     )
     directory.mkdirs()
@@ -60,7 +60,7 @@ class Experiment(
   def loadScores(
       dataDir: File,
       dataset: String,
-      distanceMetricName: String
+      metric: String
   ): (IndexedSeq[String], Iterator[(String, String, Double)]) =
 
     val inputFile = File(dataDir, s"$dataset.txt")
@@ -77,7 +77,7 @@ class Experiment(
 
     if !(scoreFile.isFile() &&
         inputFile.lastModified() < scoreFile.lastModified())
-    then populateScores(entries, scoreFile, distanceMetricName)
+    then populateScores(entries, scoreFile, metric)
 
     // FIXME Source is left unclosed
     val scores =
@@ -95,9 +95,9 @@ class Experiment(
   private def populateScores(
       entries: Seq[String],
       outputFile: File,
-      distanceMetricName: String
+      metric: String
   ): Int =
-    val stringDistance = StringDistance(distanceMetricName)
+    val stringDistance = StringDistance(metric)
     val scores =
       LazyList
         .from(entries.indices)

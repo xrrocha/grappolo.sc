@@ -7,7 +7,12 @@ import scala.io.Source
 import scala.util.Using
 
 List("surnames", "male-names", "female-names")
-  .map(Experiment("01-agglomeration", "damerau", 0.4, _))
+  .map: datasetName =>
+    Experiment(
+      name = "01-agglomeration",
+      metric = "damerau",
+      maxDistance = 0.4,
+      dataset = datasetName)
   .foreach: experiment =>
     import experiment.*
 
@@ -102,7 +107,11 @@ List("surnames", "male-names", "female-names")
         .map(_.toSeq.sorted)
         .toSeq
         .distinct
-    log(clusters.size.asCount, "clusters found for", datasetName)
+    log(
+      clusters.size.asCount,
+      "clusters found for", entries.size.asCount,
+      "entries in", dataset
+    )
 
     saveResult("clusters"): out =>
       out.println(f"size\tcount\t${bestDistance}%.08f")
