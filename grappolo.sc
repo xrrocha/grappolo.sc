@@ -76,18 +76,19 @@ List("surnames", "male-names", "female-names")
 
     val groupedScores: Seq[Seq[(String, Double)]] =
       scores
-        .groupBy((entry1, entry2, distance) => entry1)
+        .groupBy((entry, neighbor, distance) => entry)
         .toSeq
-        .map((entry1, neighbors) =>
-          ((entry1, 0.0) +: neighbors
-            .filter((_, neighbor, distance) => distance <= bestDistance)
-            .map((_ neighbor, distance) => (neighbor, distance)))
-            .sortBy((neighbor, distance) => neighbor)
-        )
+        .map: (entry, neighbors) =>
+          val entryDistancePairs =
+            (entry, 0.0) +:
+              neighbors
+                .filter((_, neighbor, distance) => distance <= bestDistance)
+                .map((_, neighbor, distance) => (neighbor, distance))
+          entryDistancePairs.sortBy((neighbor, distance) => neighbor)
     log(groupedScores.size.asCount, "grouped scores")
     resultFile("grouped-scores").writeLines(groupedScores): scoredCluster =>
       scoredCluster
-        .map((s, d) => s"$s/$d")
+        .map((entry, distance) => s"$entry/$distance")
         .mkString("\t")
 
     @tailrec
