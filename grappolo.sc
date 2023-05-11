@@ -76,13 +76,13 @@ List("surnames", "male-names", "female-names")
 
     val groupedScores: Seq[Seq[(String, Double)]] =
       scores
-        .groupBy(_._1)
+        .groupBy((entry1, entry2, distance) => entry1)
         .toSeq
-        .map((entry1, ss) =>
-          ((entry1, 0.0) +: ss
-            .filter(_._3 <= bestDistance)
-            .map(s => (s._2, s._3)))
-            .sortBy(_._1)
+        .map((entry1, neighbors) =>
+          ((entry1, 0.0) +: neighbors
+            .filter((_, neighbor, distance) => distance <= bestDistance)
+            .map((_ neighbor, distance) => (neighbor, distance)))
+            .sortBy((neighbor, distance) => neighbor)
         )
     log(groupedScores.size.asCount, "grouped scores")
     resultFile("grouped-scores").writeLines(groupedScores): scoredCluster =>
