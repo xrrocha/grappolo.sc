@@ -22,7 +22,9 @@ List("surnames", "male-names", "female-names")
         if entry1 == entry2 then 0.0
         else computeDistance(entry1, entry2)
       // TODO Evaluate best distance for just scores
-      (scores ++ scores.map((entry1, entry2, distance) => (entry2, entry1, distance)))
+      (scores ++
+        scores.map: (entry1, entry2, distance) =>
+          (entry2, entry1, distance))
         .groupBy((entry1, entry2, distance) => entry1)
         .map: (entry1, neighbors) =>
           entry1 -> neighbors
@@ -30,10 +32,11 @@ List("surnames", "male-names", "female-names")
             .toMap
             .withDefault(entry2 => defaultDistance(entry1, entry2))
         .withDefault(entry1 =>
-          Map[String, Double]().withDefault(entry2 => defaultDistance(entry1, entry2))
+          Map[String, Double]()
+            .withDefault(entry2 => defaultDistance(entry1, entry2))
         )
 
-    def distance(entry1: String, entry2: String) =
+    def entryDistance(entry1: String, entry2: String) =
       if entry1 == entry2 then 0.0
       else
         val (first, second) =
@@ -46,29 +49,30 @@ List("surnames", "male-names", "female-names")
         cluster2: Iterable[String]
     ): Double =
       cluster1
-        .flatMap(entry1 => cluster2.map(entry2 => distance(entry1, entry2)))
+        .flatMap: entry1 =>
+          cluster2.map(entry2 => entryDistance(entry1, entry2))
         .avg
 
-    val bestDistance: Double =
-      def distanceProfiles(distanceThreshold: Double): Set[Set[String]] =
+    val (bestDistance: Double, qualityMetric: Double) =
+      def neighborhoodProfile(distanceThreshold: Double): Set[Set[String]] =
         matrix.values.toSeq
           .map: neighbors =>
             neighbors.toSeq
-              .filter(_._2 <= distanceThreshold)
-              .map(_._1).toSet
+              .filter((neighbor, distance) => distance <= distanceThreshold)
+              .map((neighbor, distance) => neighbor)
+              .toSet
           .toSet
-      end distanceProfiles
+      end neighborhoodProfile
 
       distances
         .zip {
           distances
-            .map(distanceProfiles)
+            .map(neighborhoodProfile)
             .map(_.size)
             .map(size => (size - 1) / (entries.size - 1).toDouble)
         }
         .maxBy((distance, normalizedSize) => normalizedSize * (1.0 - distance))
-        ._1
-    log("Best distance", bestDistance)
+    log("Best distance", bestDistance, "quality metric", qualityMetric)
 
     val groupedScores: Seq[Seq[(String, Double)]] =
       scores
