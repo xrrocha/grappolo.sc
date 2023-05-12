@@ -56,9 +56,9 @@ object Grappolo:
                 val profileCount = neighborhoodProfile.size
                 (profileCount - 1) / (entries.size - 1).toDouble
           }
-          .maxBy: (distance, profileCountScore) =>
+          .maxBy: (distance, normalizedProfileCount) =>
             val similarity = 1.0 - distance
-            similarity * profileCountScore
+            similarity * normalizedProfileCount
           ._1
       end bestDistance
 
