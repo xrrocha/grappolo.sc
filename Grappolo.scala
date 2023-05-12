@@ -39,7 +39,7 @@ object Grappolo:
             .map((_, _, distance) => distance)
             .distinct
             .sorted
-        def buildNeighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
+        def neighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
           matrix.values.toSeq
             .map: neighbors =>
               neighbors.toSeq
@@ -47,11 +47,10 @@ object Grappolo:
                 .map((neighbor, _) => neighbor)
                 .toSet
             .toSet
-        end buildNeighborhoodProfiles
         distances
           .zip {
             distances
-              .map(buildNeighborhoodProfiles)
+              .map(neighborhoodProfiles)
               .map: neighborhoodProfile =>
                 val profileCount = neighborhoodProfile.size
                 (profileCount - 1) / (entries.size - 1).toDouble
@@ -60,7 +59,6 @@ object Grappolo:
             val similarity = 1.0 - distance
             similarity * normalizedProfileCount
           ._1
-      end bestDistance
 
       def agglomerate(cluster1: Set[A], cluster2: Set[A]): Seq[Set[A]] =
         def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
@@ -68,7 +66,6 @@ object Grappolo:
             cluster1.flatMap: entry1 =>
               cluster2.map(entry2 => matrix(entry1)(entry2))
           scores.sum / scores.size
-        end clusterDistance
         def go(clusters: Seq[Set[A]]): Seq[Set[A]] =
           if clusters.size < 2 then clusters
           else
