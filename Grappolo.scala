@@ -1,14 +1,9 @@
-import scala.annotation.tailrec
-
 object Grappolo:
-
   def clustererFor[A](
       generatePairs: Iterable[A] => Iterable[(A, A)],
       distanceMetric: (A, A) => Double,
       maxDistance: Double
   ): Iterable[A] => Seq[Set[A]] =
-
-    require(maxDistance > 0.0 && maxDistance < 1.0)
 
     entries =>
 
@@ -21,15 +16,13 @@ object Grappolo:
             distance > 0.0 && distance <= maxDistance
           .toSeq
 
-      def defaultMapping(entry: A, neighbor: A) =
-        if entry == neighbor then 0.0
-        else distanceMetric(entry, neighbor)
-
-      val symmetricScores: Iterable[(A, A, Double)] =
-        scores.map: (entry, neighbor, distance) =>
-          (neighbor, entry, distance)
-
       val matrix =
+        def defaultMapping(entry: A, neighbor: A) =
+          if entry == neighbor then 0.0
+          else distanceMetric(entry, neighbor)
+        val symmetricScores: Iterable[(A, A, Double)] =
+          scores.map: (entry, neighbor, distance) =>
+            (neighbor, entry, distance)
         (scores ++ symmetricScores)
           .groupBy((entry, _, _) => entry)
           .map: (entry, scores) =>
@@ -41,13 +34,12 @@ object Grappolo:
           .withDefault: entry =>
             Map().withDefault(neighbor => defaultMapping(entry, neighbor))
 
-      val distances: Seq[Double] =
-        scores
-          .map((_, _, distance) => distance)
-          .distinct
-          .sorted
-
-      val maxProfileDistance: Double =
+      val bestDistance: Double =
+        val distances: Seq[Double] =
+          scores
+            .map((_, _, distance) => distance)
+            .distinct
+            .sorted
         def buildNeighborhoodProfiles(distanceThreshold: Double): Set[Set[A]] =
           matrix.values.toSeq
             .map: neighbors =>
@@ -69,7 +61,7 @@ object Grappolo:
             val similarity = 1.0 - distance
             similarity * profileCountScore
           ._1
-      end maxProfileDistance
+      end bestDistance
 
       def agglomerate(cluster1: Set[A], cluster2: Set[A]): Seq[Set[A]] =
         def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
@@ -78,7 +70,6 @@ object Grappolo:
               cluster2.map(entry2 => matrix(entry1)(entry2))
           scores.sum / scores.size
         end clusterDistance
-        @tailrec
         def go(clusters: Seq[Set[A]]): Seq[Set[A]] =
           if clusters.size < 2 then clusters
           else
@@ -88,7 +79,7 @@ object Grappolo:
                   (i, j, clusterDistance(clusters(i), clusters(j)))
                 .minBy: (i, j, distance) =>
                   (distance, clusters(i).size + clusters(j).size)
-            if distance > maxProfileDistance then clusters
+            if distance > bestDistance then clusters
             else
               go:
                 (clusters(i) ++ clusters(j)) +:
@@ -104,11 +95,10 @@ object Grappolo:
             .map(entry => (entry, Set(entry)))
             .toMap
         scores
-          .filter((_, _, distance) => distance <= maxProfileDistance)
+          .filter((_, _, distance) => distance <= bestDistance)
           .sortBy((_, _, distance) => distance)
           .foldLeft(initialClusterMap): (runningClusterMap, score) =>
             val (entry, neighbor, _) = score
-
             runningClusterMap ++
               agglomerate(runningClusterMap(entry), runningClusterMap(neighbor))
                 .flatMap: cluster =>
