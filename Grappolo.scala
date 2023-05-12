@@ -6,7 +6,6 @@ object Grappolo:
   ): Iterable[A] => Seq[Set[A]] =
 
     entries =>
-
       val scores: Seq[(A, A, Double)] =
         generatePairs(entries)
           .filter((entry, neighbor) => entry != neighbor)
@@ -87,7 +86,6 @@ object Grappolo:
                     .filter(c => c != i && c != j)
                     .map(clusters)
         go(IndexedSeq(cluster1, cluster2))
-      end agglomerate
 
       val clusterMap: Map[A, Set[A]] =
         val initialClusterMap: Map[A, Set[A]] =
@@ -103,7 +101,6 @@ object Grappolo:
               agglomerate(runningClusterMap(entry), runningClusterMap(neighbor))
                 .flatMap: cluster =>
                   cluster.map(entry => (entry, cluster))
-      end clusterMap
 
       clusterMap.values.toSeq.distinct
   end clustererFor
