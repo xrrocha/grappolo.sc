@@ -71,14 +71,13 @@ object Grappolo:
           ._1
       end maxProfileDistance
 
-      def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
-        val scores =
-          cluster1.flatMap: entry1 =>
-            cluster2.map(entry2 => matrix(entry1)(entry2))
-        scores.sum / scores.size
-      end clusterDistance
-
       def agglomerate(cluster1: Set[A], cluster2: Set[A]): Seq[Set[A]] =
+        def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
+          val scores =
+            cluster1.flatMap: entry1 =>
+              cluster2.map(entry2 => matrix(entry1)(entry2))
+          scores.sum / scores.size
+        end clusterDistance
         @tailrec
         def go(clusters: Seq[Set[A]]): Seq[Set[A]] =
           if clusters.size < 2 then clusters
