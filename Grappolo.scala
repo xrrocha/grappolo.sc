@@ -71,8 +71,6 @@ object Grappolo:
             val similarity = 1.0 - distance
             similarity * profileCountScore
           ._1
-        // .also:bestDistance =>
-        //   System.err.println(s"bestDistance: $bestDistance"))
       end maxProfileDistance
 
       def clusterDistance(cluster1: Set[A], cluster2: Set[A]): Double =
@@ -130,7 +128,3 @@ object Grappolo:
       .flatMap(i => (i + 1 until seq.size).map(j => (i, j)))
       .map((i, j) => (seq(i), seq(j)))
 end Grappolo
-
-implicit class KLike[T](t: T):
-  def let[R](f: T => R): R = f(t)
-  def also(f: T => Unit): T = { f(t); t }
