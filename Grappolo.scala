@@ -57,14 +57,12 @@ object Grappolo:
                 .toSet
             .toSet
         end buildNeighborhoodProfiles
-        // Choose distance yielding highest metric for neighborhood profile count
         distances
           .zip {
             distances
               .map(buildNeighborhoodProfiles)
               .map: neighborhoodProfile =>
                 val profileCount = neighborhoodProfile.size
-                // Normalize profile count w/respect to given size
                 (profileCount - 1) / (entries.size - 1).toDouble
           }
           .maxBy: (distance, profileCountScore) =>
