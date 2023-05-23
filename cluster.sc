@@ -68,7 +68,7 @@ def clusterNames(runId: Id, names: Set[Name]): Seq[Set[Name]] =
       clusters.map(normalizedNameMap)
     .also: clusters =>
       log(s"$runId: ${clusters.size} clusters found")
-      resultFile(s"clusters-$runId").write: out =>
+      resultFile(s"clusters/$runId").write: out =>
         clusters
           .sortBy(-_.size)
           .zipWithIndex
@@ -199,4 +199,4 @@ def resultFile(basename: String, extension: String = "txt") =
 def resultFile(sourceFile: File) =
   File(resultDir, sourceFile.getName)
 
-lazy val log = loggerFor(resultFile("cluster", "log"))
+lazy val log = loggerFor(resultFile(scriptPath.basename, "log"))
