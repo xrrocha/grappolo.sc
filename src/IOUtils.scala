@@ -44,6 +44,17 @@ object IOUtils:
       PrintWriter(OutputStreamWriter(os), true)
   end extension
 
+  extension (filename: String)
+    def splitFilename: (String, String) =
+      val pos = filename.lastIndexOf('.')
+      if pos < 0 then (filename, "")
+      else (filename.substring(0, pos), filename.substring(pos + 1))
+    def basename: String =
+      filename.splitFilename._1
+    def extension: String =
+      filename.splitFilename._2
+  end extension
+
   extension (file: File)
     def parentFile: File =
       val parent = file.getParentFile
