@@ -199,4 +199,5 @@ def resultFile(basename: String, extension: String = "txt") =
 def resultFile(sourceFile: File) =
   File(resultDir, sourceFile.getName)
 
-lazy val log = loggerFor(resultFile(scriptPath.basename, "log"))
+val scriptName = scriptPath.basename
+lazy val log = loggerFor(resultFile(scriptName, "log"))
