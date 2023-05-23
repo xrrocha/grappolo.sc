@@ -5,6 +5,7 @@
 
 // //> using options "-coverage-out:${.}"
 
+// //> using jar lib/demetrio.jar
 //> using dep info.debatty:java-string-similarity:2.0.0
 //> using dep org.scala-lang.modules::scala-parallel-collections::1.0.4
 
